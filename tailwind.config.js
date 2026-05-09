@@ -26,3 +26,4 @@ export default {
     require('@tailwindcss/forms'),
   ],
 }
+
