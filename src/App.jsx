@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { UserRightsProvider } from './contexts/UserRightsContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -14,8 +14,9 @@ import UserManagementPage from './pages/UserManagementPage';
 
 function App() {
   const { currentUser, loading } = useAuth();
+  const location = useLocation();
 
-  if (loading) {
+  if (loading && location.pathname !== '/auth/callback') {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
