@@ -19,7 +19,6 @@ export function AuthProvider({ children }) {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) {
@@ -29,15 +28,13 @@ export function AuthProvider({ children }) {
       }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
-      
+
       if (event === 'SIGNED_IN' && session) {
         await checkUserStatus(session);
       } else if (event === 'SIGNED_OUT') {
         setCurrentUser(null);
-        setError(null);
         setLoading(false);
       }
     });
@@ -49,43 +46,60 @@ export function AuthProvider({ children }) {
     try {
       const { data: userRow, error: userError } = await supabase
         .from('user')
-        .select('userId, username, lastName, firstName, user_type, record_status')
-        .eq('userId', session.user.id)
-        .single();
+        .select('userid, username, lastname, firstname, user_type, record_status')
+        .eq('userid', session.user.id)
+        .maybeSingle();
 
       if (userError) {
         console.error('Error fetching user:', userError);
-        setError('Failed to load user data');
-        setLoading(false);
-        return;
-      }
-
-      // Login guard: check if user is ACTIVE
-      if (userRow?.record_status !== 'ACTIVE') {
         await supabase.auth.signOut();
         setCurrentUser(null);
-        setError('Your account is pending activation by an administrator.');
-        toast.error('Your account is pending activation by an administrator.');
+        setError('Failed to load user data. Please contact an administrator.');
         setLoading(false);
         return;
       }
 
-      // User is ACTIVE, set user data
+      if (!userRow) {
+        await supabase.auth.signOut();
+        setCurrentUser(null);
+        setError('Your account has been created, but your app profile is not ready yet. Please wait for administrator activation.');
+        toast.error('Your account needs administrator activation before you can continue.');
+        setLoading(false);
+        return;
+      }
+
+      if (userRow.record_status !== 'ACTIVE') {
+        await supabase.auth.signOut();
+        setCurrentUser(null);
+        setError('Your account is pending activation by an administrator. Please wait until your account is activated.');
+        toast.error('Your account needs administrator activation before you can continue.');
+        setLoading(false);
+        return;
+      }
+
       setCurrentUser({
         ...session.user,
-        ...userRow
+        userId: userRow.userid,
+        username: userRow.username,
+        lastName: userRow.lastname,
+        firstName: userRow.firstname,
+        user_type: userRow.user_type,
+        record_status: userRow.record_status
       });
       setError(null);
       setLoading(false);
     } catch (err) {
       console.error('Error in checkUserStatus:', err);
-      setError('An error occurred');
+      await supabase.auth.signOut();
+      setCurrentUser(null);
+      setError('An error occurred while checking your account status.');
       setLoading(false);
     }
   };
 
   const signUp = async (email, password, metadata) => {
     try {
+      setError(null);
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -99,6 +113,7 @@ export function AuthProvider({ children }) {
       toast.success('Registration successful! Please check your email to confirm your account.');
       return { data, error: null };
     } catch (error) {
+      setError(error.message);
       toast.error(error.message);
       return { data: null, error };
     }
@@ -106,6 +121,7 @@ export function AuthProvider({ children }) {
 
   const signIn = async (email, password) => {
     try {
+      setError(null);
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
@@ -115,6 +131,7 @@ export function AuthProvider({ children }) {
       
       return { data, error: null };
     } catch (error) {
+      setError(error.message);
       toast.error(error.message);
       return { data: null, error };
     }
@@ -122,6 +139,7 @@ export function AuthProvider({ children }) {
 
   const signInWithGoogle = async () => {
     try {
+      setError(null);
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
@@ -133,6 +151,7 @@ export function AuthProvider({ children }) {
       
       return { data, error: null };
     } catch (error) {
+      setError(error.message);
       toast.error(error.message);
       return { data: null, error };
     }
