@@ -29,17 +29,16 @@ export function UserRightsProvider({ children }) {
   const loadUserRights = async () => {
     try {
       const { data, error } = await supabase
-        .from('UserModule_Rights')
-        .select('Right_ID, Right_value')
+        .from('usermodule_rights')
+        .select('right_id, right_value')
         .eq('userid', currentUser.userId)
-        .eq('Record_status', 'ACTIVE');
+        .eq('record_status', 'ACTIVE');
 
       if (error) throw error;
 
-      // Convert array to object for easy lookup
       const rightsMap = {};
       data.forEach(row => {
-        rightsMap[row.Right_ID] = row.Right_value;
+        rightsMap[row.right_id] = row.right_value;
       });
 
       setRights(rightsMap);
