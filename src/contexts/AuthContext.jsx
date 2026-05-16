@@ -18,15 +18,37 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const withTimeout = (promise, ms = 5000) => {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Auth request timed out')), ms)
+      )
+    ]);
+  };
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session) {
-        checkUserStatus(session);
-      } else {
+    let cancelled = false;
+
+    withTimeout(supabase.auth.getSession())
+      .then(({ data: { session } }) => {
+        if (cancelled) return;
+
+        setSession(session);
+        if (session) {
+          checkUserStatus(session);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((error) => {
+        if (cancelled) return;
+
+        console.error('Auth initialization failed:', error);
+        setSession(null);
+        setCurrentUser(null);
         setLoading(false);
-      }
-    });
+      });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
@@ -39,41 +61,46 @@ export function AuthProvider({ children }) {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const checkUserStatus = async (session) => {
     try {
-      const { data: userRow, error: userError } = await supabase
-        .from('user')
-        .select('userid, username, lastname, firstname, user_type, record_status')
-        .eq('userid', session.user.id)
-        .maybeSingle();
+      const { data: userRow, error: userError } = await withTimeout(
+        supabase
+          .from('user')
+          .select('userid, username, lastname, firstname, user_type, record_status')
+          .eq('userid', session.user.id)
+          .maybeSingle()
+      );
 
       if (userError) {
         console.error('Error fetching user:', userError);
-        await supabase.auth.signOut();
         setCurrentUser(null);
         setError('Failed to load user data. Please contact an administrator.');
         setLoading(false);
+        supabase.auth.signOut().catch(console.error);
         return;
       }
 
       if (!userRow) {
-        await supabase.auth.signOut();
         setCurrentUser(null);
         setError('Your account has been created, but your app profile is not ready yet. Please wait for administrator activation.');
         toast.error('Your account needs administrator activation before you can continue.');
         setLoading(false);
+        supabase.auth.signOut().catch(console.error);
         return;
       }
 
       if (userRow.record_status !== 'ACTIVE') {
-        await supabase.auth.signOut();
         setCurrentUser(null);
         setError('Your account is pending activation by an administrator. Please wait until your account is activated.');
         toast.error('Your account needs administrator activation before you can continue.');
         setLoading(false);
+        supabase.auth.signOut().catch(console.error);
         return;
       }
 
@@ -90,10 +117,10 @@ export function AuthProvider({ children }) {
       setLoading(false);
     } catch (err) {
       console.error('Error in checkUserStatus:', err);
-      await supabase.auth.signOut();
       setCurrentUser(null);
       setError('An error occurred while checking your account status.');
       setLoading(false);
+      supabase.auth.signOut().catch(console.error);
     }
   };
 
