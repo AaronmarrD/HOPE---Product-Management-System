@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Package } from 'lucide-react';
 
@@ -7,8 +7,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signInWithGoogle } = useAuth();
-  const navigate = useNavigate();
+  const { signIn, signInWithGoogle, error: authError } = useAuth();
   const [searchParams] = useSearchParams();
   const errorParam = searchParams.get('error');
 
@@ -16,11 +15,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
 
-    const { error } = await signIn(email, password);
-    
-    if (!error) {
-      navigate('/products');
-    }
+    await signIn(email, password);
     
     setLoading(false);
   };
@@ -48,8 +43,30 @@ export default function LoginPage() {
           {errorParam === 'not_activated' && (
             <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
               <p className="text-sm text-yellow-800">
-                Your account is pending activation by an administrator.
+                Your account is pending activation by an administrator. Please wait until your account is activated.
               </p>
+            </div>
+          )}
+
+          {errorParam === 'profile_missing' && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              <p className="text-sm text-yellow-800">
+                Your account has been created, but your app profile is not ready yet. Please wait for administrator activation.
+              </p>
+            </div>
+          )}
+
+          {errorParam === 'profile_error' && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800">
+                Failed to load user data. Please contact an administrator.
+              </p>
+            </div>
+          )}
+
+          {authError && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+              <p className="text-sm text-red-800">{authError}</p>
             </div>
           )}
 
