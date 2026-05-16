@@ -36,7 +36,7 @@ export default function DeletedItemsPage() {
   }, [loadDeletedProducts]);
 
   const handleRecover = async (product) => {
-    setRecoveringCode(product.prodCode);
+    setRecoveringCode(product.prodcode);
     try {
       await recoverProduct(product.prodcode, currentUser.userId);
       toast.success(`"${product.description}" has been reactivated.`);
@@ -132,7 +132,7 @@ export default function DeletedItemsPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredProducts.map((product) => (
-                  <tr key={product.prodCode} className="hover:bg-gray-50">
+                  <tr key={product.prodcode} className="hover:bg-gray-50">
                     <td className="px-6 py-4 text-sm font-mono font-medium text-gray-900">
                       {product.prodcode}
                     </td>
@@ -153,7 +153,7 @@ export default function DeletedItemsPage() {
                         title="Recover product"
                       >
                         <RotateCcw className="h-3 w-3" />
-                        {recoveringCode === product.prodCode ? 'Recovering...' : 'Recover'}
+                        {recoveringCode === product.prodcode ? 'Recovering...' : 'Recover'}
                       </button>
                     </td>
                   </tr>
