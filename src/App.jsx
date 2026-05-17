@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 import { UserRightsProvider } from './contexts/UserRightsContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -15,6 +16,8 @@ import UserManagementPage from './pages/UserManagementPage';
 function App() {
   const { currentUser, loading } = useAuth();
   const location = useLocation();
+
+  if (loading && location.pathname !== '/auth/callback') {
 
   if (loading && location.pathname !== '/auth/callback') {
     return (
